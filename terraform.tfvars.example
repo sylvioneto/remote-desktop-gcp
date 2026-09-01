@@ -1,0 +1,52 @@
+# Google Cloud Project ID
+project_id = "syl-sandbox-2026"
+
+# Region and Zone
+region = "southamerica-east1"
+zone   = "southamerica-east1-a"
+
+# Custom VPC & Subnetwork Configuration
+vpc_name                = "remote-desktop-vpc"
+subnet_name             = "remote-desktop-subnet"
+subnet_cidr             = "10.10.0.0/24"
+allow_ssh_source_ranges = ["35.235.240.0/20"]
+allow_rdp_source_ranges = ["35.235.240.0/20"]
+enable_external_ip      = false
+
+# VM Configuration
+instance_name     = "remote-desktop-ubuntu"
+machine_type      = "n2-standard-8"
+boot_disk_type    = "pd-ssd"
+boot_disk_size_gb = 200
+boot_disk_image   = "ubuntu-os-cloud/ubuntu-2404-lts-amd64"
+
+# User Credentials for Remote Desktop Access
+rdp_username = "remoteuser"
+rdp_password = "remoteuser#359"
+
+# Desktop Environment Selection
+# Options: "xfce", "gnome", "cinnamon", "gnome-classic", "kde"
+desktop_environment     = "xfce"
+install_chrome_browser  = true
+install_full_desktop    = true
+
+# Additional custom packages to install during startup
+custom_packages = [
+  "less",
+  "bzip2",
+  "zip",
+  "unzip",
+  "tasksel",
+  "wget",
+  "curl",
+  "git",
+  "htop",
+  "dbus-x11",
+  "pulseaudio"
+]
+
+# Optional resource labels
+labels = {
+  workload   = "remote-desktop"
+  managed-by = "terraform"
+}

@@ -1,0 +1,203 @@
+#!/bin/bash
+set -euo pipefail
+
+exec > >(tee -a /var/log/rdp-startup.log | logger -t rdp-startup -s 2>/dev/console) 2>&1
+
+echo "================================================================="
+echo "=== Universal XRDP Remote Desktop Setup Script Starting ==="
+echo "================================================================="
+echo "Timestamp: $(date -u '+%Y-%m-%d %H:%M:%SZ')"
+echo "Desktop Environment: ${desktop_env}"
+echo "RDP Username: ${rdp_username}"
+echo "Install Chrome Browser: ${install_chrome}"
+echo "Install Full Desktop Suite: ${install_full_desktop}"
+
+# Wait for apt lock if system is undergoing initial automatic cloud updates
+while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || fuser /var/lib/apt/lists/lock >/dev/null 2>&1; do
+   echo "Waiting for background package manager locks to release..."
+   sleep 5
+done
+
+export DEBIAN_FRONTEND=noninteractive
+
+# Update and upgrade all system packages
+echo "Updating and upgrading system packages (apt update & apt upgrade)..."
+apt-get update -y
+apt-get upgrade -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold"
+
+# Install base prerequisites
+apt-get install -y --no-install-recommends \
+  curl \
+  gnupg \
+  ca-certificates \
+  apt-transport-https \
+  lsb-release \
+  software-properties-common
+
+# Enable universe and multiverse repositories on Ubuntu if applicable
+if command -v add-apt-repository >/dev/null 2>&1; then
+  add-apt-repository -y universe || true
+  add-apt-repository -y multiverse || true
+fi
+
+apt-get update -y
+
+# Base utilities needed for remote desktop sessions
+BASE_PACKAGES="desktop-base xscreensaver dbus-x11 ssl-cert ${custom_packages}"
+
+case "${desktop_env}" in
+  xfce)
+    echo "Installing and configuring Xfce desktop environment..."
+    DESKTOP_PKGS="xfce4 xfce4-goodies"
+    if [ "${install_full_desktop}" = "true" ]; then
+      DESKTOP_PKGS="$DESKTOP_PKGS task-xfce-desktop"
+    fi
+    apt-get install -y --assume-yes $BASE_PACKAGES $DESKTOP_PKGS
+    SESSION_SCRIPT="#!/bin/sh
+exec xfce4-session"
+    DEFAULT_FALLBACK_CMD="exec xfce4-session"
+    ;;
+  gnome)
+    echo "Installing and configuring GNOME (Ubuntu Desktop) environment..."
+    DESKTOP_PKGS="ubuntu-desktop-minimal gnome-session gnome-terminal"
+    if [ "${install_full_desktop}" = "true" ]; then
+      DESKTOP_PKGS="$DESKTOP_PKGS ubuntu-desktop"
+    fi
+    apt-get install -y --assume-yes $BASE_PACKAGES $DESKTOP_PKGS || apt-get install -y --assume-yes $BASE_PACKAGES ubuntu-desktop-minimal gnome-session
+    SESSION_SCRIPT="#!/bin/sh
+export XDG_SESSION_TYPE=x11
+export GNOME_SHELL_SESSION_MODE=ubuntu
+export XDG_CURRENT_DESKTOP=ubuntu:GNOME
+exec /usr/bin/gnome-session --session=ubuntu"
+    DEFAULT_FALLBACK_CMD="export XDG_SESSION_TYPE=x11
+export GNOME_SHELL_SESSION_MODE=ubuntu
+export XDG_CURRENT_DESKTOP=ubuntu:GNOME
+exec /usr/bin/gnome-session --session=ubuntu"
+    ;;
+  cinnamon)
+    echo "Installing and configuring Cinnamon desktop environment..."
+    DESKTOP_PKGS="cinnamon-core"
+    if [ "${install_full_desktop}" = "true" ]; then
+      DESKTOP_PKGS="$DESKTOP_PKGS task-cinnamon-desktop"
+    fi
+    apt-get install -y --assume-yes $BASE_PACKAGES $DESKTOP_PKGS
+    SESSION_SCRIPT="#!/bin/sh
+exec cinnamon-session-cinnamon2d"
+    DEFAULT_FALLBACK_CMD="exec cinnamon-session-cinnamon2d"
+    ;;
+  gnome-classic)
+    echo "Installing and configuring GNOME Classic desktop environment..."
+    DESKTOP_PKGS="gnome-session-flashback gnome-session"
+    apt-get install -y --assume-yes $BASE_PACKAGES $DESKTOP_PKGS || apt-get install -y --assume-yes $BASE_PACKAGES task-gnome-desktop
+    SESSION_SCRIPT="#!/bin/sh
+export XDG_CURRENT_DESKTOP=GNOME-Flashback:GNOME
+exec gnome-session-classic"
+    DEFAULT_FALLBACK_CMD="export XDG_CURRENT_DESKTOP=GNOME-Flashback:GNOME
+exec gnome-session-classic"
+    ;;
+  kde)
+    echo "Installing and configuring KDE Plasma desktop environment..."
+    DESKTOP_PKGS="task-kde-desktop"
+    apt-get install -y --assume-yes $BASE_PACKAGES $DESKTOP_PKGS || apt-get install -y --assume-yes $BASE_PACKAGES kde-plasma-desktop
+    SESSION_SCRIPT="#!/bin/sh
+exec startplasma-x11"
+    DEFAULT_FALLBACK_CMD="exec startplasma-x11"
+    ;;
+  *)
+    echo "Unrecognized desktop environment '${desktop_env}', defaulting to Xfce..."
+    apt-get install -y --assume-yes $BASE_PACKAGES xfce4 xfce4-goodies
+    SESSION_SCRIPT="#!/bin/sh
+exec xfce4-session"
+    DEFAULT_FALLBACK_CMD="exec xfce4-session"
+    ;;
+esac
+
+# Install XRDP and Xorg XRDP backend
+echo "Installing XRDP and xorgxrdp..."
+apt-get install -y --assume-yes xrdp xorgxrdp
+
+# Add xrdp to ssl-cert group to allow access to TLS certificates
+echo "Adding xrdp user to ssl-cert group..."
+adduser xrdp ssl-cert || usermod -aG ssl-cert xrdp
+
+# Configure startwm.sh for XRDP
+cat << EOF > /etc/xrdp/startwm.sh
+#!/bin/sh
+# xrdp window manager start script
+
+if test -r /etc/profile; then
+  . /etc/profile
+fi
+
+unset DBUS_SESSION_BUS_ADDRESS
+unset XDG_RUNTIME_DIR
+
+if test -r "\$HOME/.xsession"; then
+  exec /bin/sh "\$HOME/.xsession"
+fi
+
+if test -x /etc/X11/Xsession; then
+  exec /etc/X11/Xsession
+fi
+
+$DEFAULT_FALLBACK_CMD
+EOF
+chmod 755 /etc/xrdp/startwm.sh
+
+# Configure default .xsession for all future users
+echo "$SESSION_SCRIPT" > /etc/skel/.xsession
+chmod 755 /etc/skel/.xsession
+
+# Create or configure the requested local user account
+echo "Creating/configuring user account '${rdp_username}'..."
+if ! id -u "${rdp_username}" &>/dev/null; then
+  useradd -m -s /bin/bash -G sudo,ssl-cert "${rdp_username}"
+else
+  usermod -aG sudo,ssl-cert "${rdp_username}"
+fi
+
+# Set password for the user
+echo "${rdp_username}:${rdp_password}" | chpasswd
+
+# Configure .xsession for the user
+echo "$SESSION_SCRIPT" > "/home/${rdp_username}/.xsession"
+chown "${rdp_username}:${rdp_username}" "/home/${rdp_username}/.xsession"
+chmod 755 "/home/${rdp_username}/.xsession"
+
+# Prevent polkit color management and network prompt dialogs on remote login
+mkdir -p /etc/polkit-1/localauthority/50-local.d/
+cat << 'EOF' > /etc/polkit-1/localauthority/50-local.d/45-allow-colord.pkla
+[Allow Colord all Users]
+Identity=unix-user:*
+Action=org.freedesktop.color-manager.create-device;org.freedesktop.color-manager.create-profile;org.freedesktop.color-manager.delete-device;org.freedesktop.color-manager.delete-profile;org.freedesktop.color-manager.modify-device;org.freedesktop.color-manager.modify-profile
+ResultAny=no
+ResultInactive=no
+ResultActive=yes
+
+[Allow Network Control]
+Identity=unix-user:*
+Action=org.freedesktop.NetworkManager.*;org.freedesktop.packagekit.*
+ResultAny=yes
+ResultInactive=yes
+ResultActive=yes
+EOF
+
+# Install Google Chrome stable browser if requested
+if [ "${install_chrome}" = "true" ]; then
+  if ! dpkg-query -W -f='$${Status}' google-chrome-stable 2>/dev/null | grep -q "ok installed"; then
+    echo "Downloading and installing Google Chrome Stable..."
+    CHROME_DEB="/tmp/google-chrome-stable_current_amd64.deb"
+    curl -fsSL -o "$CHROME_DEB" https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+    apt-get install -y --assume-yes --fix-broken "$CHROME_DEB" || true
+    rm -f "$CHROME_DEB"
+  fi
+fi
+
+# Enable and restart XRDP service
+echo "Enabling and starting XRDP services..."
+systemctl enable xrdp.service
+systemctl restart xrdp.service
+
+echo "================================================================="
+echo "=== XRDP Remote Desktop Setup Completed Successfully ==="
+echo "================================================================="
