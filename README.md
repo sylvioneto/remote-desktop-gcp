@@ -217,7 +217,6 @@ gcloud compute ssh remote-desktop-ubuntu \
 | `subnet_name` | `string` | `"remote-desktop-subnet"` | Name of the subnetwork |
 | `subnet_cidr` | `string` | `"10.10.0.0/24"` | CIDR address space for the subnet |
 | `install_chrome_browser` | `bool` | `true` | Automatically installs Google Chrome Stable |
-| `install_full_desktop` | `bool` | `true` | Installs the complete desktop package suite |
 
 ---
 

@@ -10,7 +10,6 @@ echo "Timestamp: $(date -u '+%Y-%m-%d %H:%M:%SZ')"
 echo "Desktop Environment: ${desktop_env}"
 echo "RDP Username: ${rdp_username}"
 echo "Install Chrome Browser: ${install_chrome}"
-echo "Install Full Desktop Suite: ${install_full_desktop}"
 
 # Wait for apt lock if system is undergoing initial automatic cloud updates
 while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || fuser /var/lib/apt/lists/lock >/dev/null 2>&1; do
@@ -48,22 +47,14 @@ BASE_PACKAGES="desktop-base xscreensaver dbus-x11 ssl-cert ${custom_packages}"
 case "${desktop_env}" in
   xfce)
     echo "Installing and configuring Xfce desktop environment..."
-    DESKTOP_PKGS="xfce4 xfce4-goodies"
-    if [ "${install_full_desktop}" = "true" ]; then
-      DESKTOP_PKGS="$DESKTOP_PKGS task-xfce-desktop"
-    fi
-    apt-get install -y --assume-yes $BASE_PACKAGES $DESKTOP_PKGS
+    apt-get install -y --assume-yes $BASE_PACKAGES xfce4 xfce4-goodies
     SESSION_SCRIPT="#!/bin/sh
 exec xfce4-session"
     DEFAULT_FALLBACK_CMD="exec xfce4-session"
     ;;
   gnome)
     echo "Installing and configuring GNOME (Ubuntu Desktop) environment..."
-    DESKTOP_PKGS="ubuntu-desktop-minimal gnome-session gnome-terminal"
-    if [ "${install_full_desktop}" = "true" ]; then
-      DESKTOP_PKGS="$DESKTOP_PKGS ubuntu-desktop"
-    fi
-    apt-get install -y --assume-yes $BASE_PACKAGES $DESKTOP_PKGS || apt-get install -y --assume-yes $BASE_PACKAGES ubuntu-desktop-minimal gnome-session
+    apt-get install -y --assume-yes $BASE_PACKAGES ubuntu-desktop-minimal gnome-session gnome-terminal || apt-get install -y --assume-yes $BASE_PACKAGES ubuntu-desktop-minimal gnome-session
     SESSION_SCRIPT="#!/bin/sh
 export XDG_SESSION_TYPE=x11
 export GNOME_SHELL_SESSION_MODE=ubuntu
@@ -76,19 +67,14 @@ exec /usr/bin/gnome-session --session=ubuntu"
     ;;
   cinnamon)
     echo "Installing and configuring Cinnamon desktop environment..."
-    DESKTOP_PKGS="cinnamon-core"
-    if [ "${install_full_desktop}" = "true" ]; then
-      DESKTOP_PKGS="$DESKTOP_PKGS task-cinnamon-desktop"
-    fi
-    apt-get install -y --assume-yes $BASE_PACKAGES $DESKTOP_PKGS
+    apt-get install -y --assume-yes $BASE_PACKAGES cinnamon-core
     SESSION_SCRIPT="#!/bin/sh
 exec cinnamon-session-cinnamon2d"
     DEFAULT_FALLBACK_CMD="exec cinnamon-session-cinnamon2d"
     ;;
   gnome-classic)
     echo "Installing and configuring GNOME Classic desktop environment..."
-    DESKTOP_PKGS="gnome-session-flashback gnome-session"
-    apt-get install -y --assume-yes $BASE_PACKAGES $DESKTOP_PKGS || apt-get install -y --assume-yes $BASE_PACKAGES task-gnome-desktop
+    apt-get install -y --assume-yes $BASE_PACKAGES gnome-session-flashback gnome-session
     SESSION_SCRIPT="#!/bin/sh
 export XDG_CURRENT_DESKTOP=GNOME-Flashback:GNOME
 exec gnome-session-classic"
@@ -97,8 +83,7 @@ exec gnome-session-classic"
     ;;
   kde)
     echo "Installing and configuring KDE Plasma desktop environment..."
-    DESKTOP_PKGS="task-kde-desktop"
-    apt-get install -y --assume-yes $BASE_PACKAGES $DESKTOP_PKGS || apt-get install -y --assume-yes $BASE_PACKAGES kde-plasma-desktop
+    apt-get install -y --assume-yes $BASE_PACKAGES kde-plasma-desktop
     SESSION_SCRIPT="#!/bin/sh
 exec startplasma-x11"
     DEFAULT_FALLBACK_CMD="exec startplasma-x11"

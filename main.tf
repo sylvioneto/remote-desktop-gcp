@@ -36,12 +36,11 @@ resource "google_compute_instance" "remote_desktop" {
   }
 
   metadata_startup_script = templatefile("${path.module}/startup-script.sh.tftpl", {
-    desktop_env          = var.desktop_environment
-    rdp_username         = var.rdp_username
-    rdp_password         = var.rdp_password
-    install_chrome       = tostring(var.install_chrome_browser)
-    install_full_desktop = tostring(var.install_full_desktop)
-    custom_packages      = join(" ", var.custom_packages)
+    desktop_env     = var.desktop_environment
+    rdp_username    = var.rdp_username
+    rdp_password    = var.rdp_password
+    install_chrome  = tostring(var.install_chrome_browser)
+    custom_packages = join(" ", var.custom_packages)
   })
 
   metadata = {

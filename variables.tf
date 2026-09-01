@@ -110,12 +110,6 @@ variable "install_chrome_browser" {
   default     = true
 }
 
-variable "install_full_desktop" {
-  description = "Whether to install the full suite of desktop applications (task-*-desktop packages)."
-  type        = bool
-  default     = true
-}
-
 variable "custom_packages" {
   description = "List of extra packages to install during startup script execution."
   type        = list(string)

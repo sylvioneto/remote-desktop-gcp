@@ -28,7 +28,6 @@ rdp_password = "remoteuser#359"
 # Options: "xfce", "gnome", "cinnamon", "gnome-classic", "kde"
 desktop_environment     = "xfce"
 install_chrome_browser  = true
-install_full_desktop    = true
 
 # Additional custom packages to install during startup
 custom_packages = [
