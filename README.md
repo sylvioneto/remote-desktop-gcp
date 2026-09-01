@@ -62,14 +62,14 @@ Before deploying, ensure you have:
 2. **Google Cloud SDK (`gcloud`)** installed and authenticated:
    ```bash
    gcloud auth application-default login
-   gcloud config set project syl-sandbox-2026
+   gcloud config set project <YOUR PROJECT ID>
    ```
 3. **Required IAM Permissions**:
    - `roles/compute.admin` (to create instances, disks, networks, firewalls)
    - `roles/iap.tunnelResourceAccessor` (to open IAP TCP tunnels to instances)
 4. **Enabled Google APIs**:
    ```bash
-   gcloud services enable compute.googleapis.com iap.googleapis.com --project=syl-sandbox-2026
+   gcloud services enable compute.googleapis.com iap.googleapis.com --project=<YOUR PROJECT ID>
    ```
 5. Any Remote Desktop client on your local computer (e.g., Windows Remote Desktop Connection, Microsoft Remote Desktop for Mac, Remmina for Linux).
 
@@ -95,20 +95,21 @@ remote-desktop-vm/
 ### Step 1: Clone or Navigate to the Directory
 
 ```bash
-cd /home/sylvio/remote-desktop-vm
+cd /home/user/remote-desktop-vm
 ```
 
-### Step 2: Configure Custom Variables (Optional)
+### Step 2: Configure Project ID & Custom Variables
 
-Create a `terraform.tfvars` file if you wish to override default variables:
+Copy the example variables file to `terraform.tfvars`:
 
 ```bash
 cp terraform.tfvars.example terraform.tfvars
 ```
 
-Example `terraform.tfvars`:
+Open `terraform.tfvars` and set your Google Cloud **`project_id`** (`<YOUR PROJECT ID>`), along with any other optional settings:
+
 ```hcl
-project_id          = "syl-sandbox-2026"
+project_id          = "<YOUR PROJECT ID>"
 region              = "southamerica-east1"
 zone                = "southamerica-east1-a"
 instance_name       = "remote-desktop-ubuntu"
@@ -141,13 +142,13 @@ Type `yes` when prompted to confirm the deployment.
 
 ### 1. Establish the Secure IAP Tunnel
 
-Run the following command in a local terminal window:
+Run the following command in a local terminal window (replace `<YOUR PROJECT ID>` with your Google Cloud Project ID):
 
 ```bash
 gcloud compute start-iap-tunnel remote-desktop-ubuntu 3389 \
     --local-host-port=localhost:3389 \
     --zone=southamerica-east1-a \
-    --project=syl-sandbox-2026
+    --project=<YOUR PROJECT ID>
 ```
 
 > **Keep this terminal window running in the background while you are using the remote desktop session.**
@@ -190,7 +191,7 @@ If you need command-line terminal access to the VM:
 
 ```bash
 gcloud compute ssh remote-desktop-ubuntu \
-    --project=syl-sandbox-2026 \
+    --project=<YOUR PROJECT ID> \
     --zone=southamerica-east1-a \
     --tunnel-through-iap
 ```
@@ -201,7 +202,7 @@ gcloud compute ssh remote-desktop-ubuntu \
 
 | Variable | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `project_id` | `string` | `"syl-sandbox-2026"` | Target Google Cloud Project ID |
+| `project_id` | `string` | *(Required)* | Target Google Cloud Project ID |
 | `region` | `string` | `"southamerica-east1"` | GCP Region for VPC, Subnet, NAT & VM |
 | `zone` | `string` | `"southamerica-east1-a"` | Specific GCP Zone |
 | `instance_name` | `string` | `"remote-desktop-ubuntu"` | Name of the Compute Engine VM |
@@ -226,7 +227,7 @@ gcloud compute ssh remote-desktop-ubuntu \
 To verify that packages and XRDP finished installing:
 ```bash
 gcloud compute ssh remote-desktop-ubuntu \
-    --project=syl-sandbox-2026 \
+    --project=<YOUR PROJECT ID> \
     --zone=southamerica-east1-a \
     --tunnel-through-iap \
     --command="sudo tail -n 50 /var/log/rdp-startup.log"
@@ -242,7 +243,7 @@ Look for:
 ### Check XRDP Service Status & Listening Port
 ```bash
 gcloud compute ssh remote-desktop-ubuntu \
-    --project=syl-sandbox-2026 \
+    --project=<YOUR PROJECT ID> \
     --zone=southamerica-east1-a \
     --tunnel-through-iap \
     --command="sudo systemctl status xrdp --no-pager && sudo ss -tulpn | grep 3389"
@@ -255,7 +256,7 @@ gcloud compute ssh remote-desktop-ubuntu \
 2. **Permission Denied opening IAP Tunnel**:
    - Ensure your GCP user or service account has the **IAP-secured Tunnel User** role (`roles/iap.tunnelResourceAccessor`):
      ```bash
-     gcloud projects add-iam-policy-binding syl-sandbox-2026 \
+     gcloud projects add-iam-policy-binding <YOUR PROJECT ID> \
          --member="user:your-email@example.com" \
          --role="roles/iap.tunnelResourceAccessor"
      ```
@@ -265,7 +266,7 @@ gcloud compute ssh remote-desktop-ubuntu \
      gcloud compute start-iap-tunnel remote-desktop-ubuntu 3389 \
          --local-host-port=localhost:3390 \
          --zone=southamerica-east1-a \
-         --project=syl-sandbox-2026
+         --project=<YOUR PROJECT ID>
      ```
      Then connect your RDP client to `localhost:3390`.
 

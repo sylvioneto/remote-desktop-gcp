@@ -1,7 +1,6 @@
 variable "project_id" {
   description = "The Google Cloud Project ID where the remote desktop instance will be deployed."
   type        = string
-  default     = "syl-sandbox-2026"
 }
 
 variable "region" {

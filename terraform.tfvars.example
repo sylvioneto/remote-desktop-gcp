@@ -1,5 +1,5 @@
 # Google Cloud Project ID
-project_id = "syl-sandbox-2026"
+project_id = "<YOUR PROJECT ID>"
 
 # Region and Zone
 region = "southamerica-east1"
